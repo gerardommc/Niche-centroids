@@ -85,10 +85,11 @@ library(ggplot2)
 
 ppms <- read.csv("Simulated-species/Results-PPMs.csv")
 ellips <- read.csv("Simulated-species/Results-ellipses.csv")
-all.results <- rbind(ppms, ellips)
+mod.ellips <- read.csv("Simulated-species/Results-mod-ellipses.csv")
+all.results <- rbind(ppms, ellips, mod.ellips)
 ```
 
-```{r Plot general results, echo= F, fig.height=3, fig.width=3}
+```{r Plot-general-results, echo= F, fig.height=3, fig.width=3, fig.align='center'}
 ggplot(all.results) + geom_violin(aes(x = approach, y = Corr.surf)) +
       geom_boxplot(aes(x = approach, y = Corr.surf), alpha = 0.5) +
       labs(x = "Approach", y = "Correlation with generating surface")
@@ -96,7 +97,7 @@ ggplot(all.results) + geom_violin(aes(x = approach, y = Corr.surf)) +
 
 This is because the centroids characterised with PPMs tended to be closer to the real centroid than centroids characterised by ellipses:
 
-```{r echo=F, fig.height=3, fig.width=4, warning=FALSE, message = F}
+```{r echo=F, fig.height=3, fig.width=4, warning=FALSE, message = F, fig.align='center'}
 ggplot(all.results) + geom_point(aes(x = log10(Dist.true.cent), y = Corr.surf, colour = approach), alpha = 0.1) + 
       geom_smooth(aes(x = log10(Dist.true.cent), y = Corr.surf, colour = approach, fill = approach), alpha = 0.5) + 
       labs(x = "log-Distance to true centroid", y = "Correlation with generating surface", 
@@ -186,7 +187,7 @@ ppm.best.mod <- readRDS(paste0("../Resultados/Analysis-centroids/Fitted-PPMs/PPM
 ppm.worst.mod <- readRDS(paste0("../Resultados/Analysis-centroids/Fitted-PPMs/PPM-",ppm.worst,".rds"))
 
 ellip.best.mod <- readRDS(paste0("../Resultados/Analysis-centroids/Fitted-ellipses/Ellips-",ellip.best,".rds"))
-ellip.worst.mod <- readRDS(paste0("../Resultados/Analysis-centroids/Fitted-ellipses/Ellips-",ellip.worst,".rds"))
+ellip.worst.mod <- readRDS(paste0("../Resultados/Analysis-centroids/Fitted-mod-ellipses/Mod-ellips-",ellip.worst,".rds"))
 ```
 
 
@@ -206,6 +207,22 @@ In contrast with this model which performed so poorly on the basis of the estima
 coef(ppm.best.mod)
 ```
 
+Now by examining all the models, the distance to the true centroid tends to be much larger among the models which fitted at least one positive coefficient, although some of the models with negative coefficients only also struggled a fair bit (outliers):
+
+```{r, echo = F}
+all.ppms <- lapply(paste0("../Resultados/Analysis-centroids/Fitted-PPMs/PPM-", 1:1000,".rds"), readRDS)
+neg.coefs <- sapply(all.ppms, function(x){(any(x$coef[5:7] > 0))})
+
+ppms$pos.neg <- neg.coefs
+```
+
+```{r fig.height=3, fig.width=3, fig.align='center', echo=F}
+ggplot(ppms) + geom_violin(aes(x = pos.neg, y = log10(Dist.true.cent))) +
+   geom_boxplot(aes(x = pos.neg, y = log10(Dist.true.cent)), alpha = 0.5) + 
+   labs(x = "Positive cofficients in model", y = "log10 distance to true centroid")
+   
+```
+
 #### Ellipses
 
 For the case of the ellipses there is no alternative than having a close look at the distribution of the specific variables used: *log-normal*, *beta* and *gamma*:
@@ -217,20 +234,20 @@ layers <- readRDS("Simulated-layers/All-simulated-layers.rds")
 lay.sum <- read.csv("Simulated-layers/Layer-summaries.csv")
 ```
 
-```{r fig.height=9, fig.width=6, echo = F}
+```{r fig.height=9, fig.width=6, echo = F, fig.align='center'}
 lay.gen.worst <- dropLayer(layers, which(! 1:100 %in% config$combinations[,config$sample[ellip.worst]] ))
 par(mfrow = c(3, 2))
 for(i in 1:3){
       plot(lay.gen.worst[[i]], main = c("Log-normal", "Beta", "Gamma")[i])
       density(lay.gen.worst[[i]], xlab = "Value", ylab = "Frequency")
       abline(v = lay.sum$means[config$combinations[, config$sample[ellip.worst]][i]])
-      abline(v = ellip.worst.mod[[1]]$centroid[i], col = "red")
+      abline(v = ellip.worst.mod[[1]]$center[i], col = "red")
 }
 ```
 
 The black vertical lines represent the true centroid values to be retrieved, and the red vertical lines are the retrieved values. The distance between lines is what drove the poorer performance of this model in comparison with the rest. And as can be seen in the plot of "distance vs correlation", greater distance from the true centroids results in estimating a surface which resembles less the surface used to generate the data, especially with ellipses.
 
-```{r fig.height=6, fig.width=3, echo = F}
+```{r fig.height=8, fig.width=4, echo = F, fig.align='center'}
 p.pres <- readRDS("Simulated-species/P-presence.rds")
 occurs <- readRDS("Simulated-species/Species-presences.rds")
 
