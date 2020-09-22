@@ -94,7 +94,6 @@ ggplot(all.results) + geom_violin(aes(x = approach, y = Corr.surf)) +
       geom_boxplot(aes(x = approach, y = Corr.surf), alpha = 0.5) +
       labs(x = "Approach", y = "Correlation with generating surface")
 ```
-
 This is because the centroids characterised with PPMs tended to be closer to the real centroid than centroids characterised by ellipses:
 
 ```{r echo=F, fig.height=3, fig.width=4, warning=FALSE, message = F, fig.align='center'}

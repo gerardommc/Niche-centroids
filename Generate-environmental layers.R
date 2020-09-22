@@ -1,6 +1,6 @@
 #This script simulates 100 raster images with different statistical distributions: Normal, log-normal, beta and gamma
 #To use for simulating species 
-library(mvtnorm)   # Simulate multivariates distributions
+library(mvtnorm)   # Simulate multivariate distributions
 library(raster)    # Handle raster objects
 library(doParallel)   # Advanced loops
 
@@ -56,18 +56,21 @@ lambdas.l.2 <- runif(10, 0.01, 0.25)
 lambdas.s <- runif(10, 0.01, 0.1)
 lambdas.s.2 <- runif(10, 0.01, 0.1)
 lambdas.s.3 <- runif(10, 0.01, 0.1)
+lambdas.s.4 <- runif(10, 0.01, 0.1)
 
 sigma.l <- runif(10, 1, 3)
 sigma.l.2 <- runif(10, 1, 3)
 sigma.s <- runif(10, 0.2, 1)
 sigma.s.2 <- runif(10, 0.2, 1)
-sigma.s.3 <- runif(runif(10, 0.2, 1))
+sigma.s.3 <- runif(10, 0.2, 1)
+sigma.s.4 <- runif(10, 0.2, 1)
 
 large.means <- rnorm(10, 20, 10) #Medias de cada capa
 large.means.2 <- rnorm(10, 100, 25)
 small.means <- runif(10, -0.1, 0.5)
 small.means.2 <- runif(10, -0.1, 0.5)
 small.means.3 <- runif(10, -0.1, 0.5)
+small.means.4 <- runif(10, -0.1, 0.5)
 
 len <- 100 #Tamaño de las capas ráster
 dists <- mat.distances(len = len)
@@ -109,6 +112,13 @@ SM3.layers <- foreach(i = seq_along(lambdas.l)) %dopar% {
 }
 gc(reset = T)
 
+SM4.layers <- foreach(i = seq_along(lambdas.l)) %dopar% {
+   mat <- corr.surf(len = len, global.mean = small.means.4[i], lambda = lambdas.s.4[i], sigma = sigma.s.4[i])
+   r <- mat.to.rast(mat, ext = len)
+   return(r)
+}
+gc(reset = T)
+
 #Normally distributed layers
 LM.r <- stack(LM.layers)
 names(LM.r) <- paste0("Large-mean-", 1:10)
@@ -123,7 +133,10 @@ SM2.r <- stack(SM2.layers)
 names(SM2.r) <- paste0("Small-mean.2-",1:10)
 
 SM3.r <- stack(SM3.layers)
-names(SM2.r) <- paste0("Small-mean.3-",1:10)
+names(SM3.r) <- paste0("Small-mean.3-",1:10)
+
+SM4.r <- stack(SM4.layers)
+names(SM4.r) <- paste0("Small-mean.4-",1:10)
 
 #Log-normally distributed layers
 pos1.r <- exp(SM.r)
@@ -134,6 +147,9 @@ names(pos2.r) <- paste0("Log-normal.2-", 1:10)
 
 pos3.r <- exp(SM3.r)
 names(pos3.r) <- paste0("Log-normal.3-", 1:10)
+
+pos4.r <- exp(SM4.r)
+names(pos4.r) <- paste0("Log-normal.4-", 1:10)
 
 #Beta-distributed layers
 pos1.df <- data.frame(rasterToPoints(pos1.r))
@@ -175,7 +191,7 @@ names(gamma.2.r) <- paste0("Gamma.2-", 1:10)
 dir.create("Simulated-layers")
 
 all.Layers <- stack(LM.r, LM2.r,
-                    SM.r, SM2.r,
+                    SM3.r, SM4.r,
                     pos1.r, pos2.r,
                     beta.1.r, beta.2.r,
                     gamma.1.r, gamma.2.r)

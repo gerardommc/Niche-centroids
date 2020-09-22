@@ -30,7 +30,7 @@ species.layers <- lapply(1:ncol(sample.layers), function(x){dropLayer(all.layers
 species.centroids <- lapply(1:ncol(sample.layers), function(x){l.sum$means[sample.layers[, x]]})
 species.covariances <- lapply(1:ncol(sample.layers), function(x){
       df <- data.frame(rasterToPoints(species.layers[[x]]))[, 3:5]
-      return(cov(df))})
+      return(MASS :: cov.rob(df, method = "mve", nsamp = "sample", seed = 1234)$cov)})
 
 spp.cent.cov <- list(centroids = species.centroids,
                      covariances = species.covariances)
@@ -46,13 +46,13 @@ mahal.dists <- lapply(1:ncol(sample.layers), function(x){
 
 saveRDS(mahal.dists, "Simulated-species/Mahal-dists-centroids.rds")
 
-p.presence <- lapply(mahal.dists, function(x){exp(x*(-1))/(1 + exp(x*(-1)))})
+p.presence <- lapply(mahal.dists, function(x){exp(-0.5 * x)})
 saveRDS(p.presence, "Simulated-species/P-presence.rds")
 
 library(dismo)
 
 spp.points <- lapply(p.presence, function(x){
-  points <- randomPoints(mask = x, n = rpois(1, rnorm(1, mean = 500, sd = 90)), prob = T)
+  points <- randomPoints(mask = x, n = 500, prob = T)
   points <- t(apply(points, 1, function(x){ x + rnorm(2)}))
   return(points)
   })
