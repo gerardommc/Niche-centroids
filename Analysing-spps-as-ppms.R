@@ -64,7 +64,3 @@ dir.create("../Resultados/Analysis-centroids/Fitted-PPMs")
 for(i in seq_along(spp.ppms)){ 
    saveRDS(spp.ppms[[i]], paste0("../Resultados/Analysis-centroids/Fitted-PPMs/PPM-", i, ".rds"))
 }
-
-
-
-

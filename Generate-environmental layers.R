@@ -155,9 +155,11 @@ names(pos4.r) <- paste0("Log-normal.4-", 1:10)
 pos1.df <- data.frame(rasterToPoints(pos1.r))
 pos2.df <- data.frame(rasterToPoints(pos2.r))
 pos3.df <- data.frame(rasterToPoints(pos3.r))
+pos4.df <- data.frame(rasterToPoints(pos4.r))
+
 
 beta.1.df <- foreach(i = 3:12, .combine = cbind) %do% {
-   sapply(1:nrow(pos1.df) , function(x){qbeta(p = 0.5, shape1 = pos1.df[x,i], shape2 = pos2.df[x,i])})
+   sapply(1:nrow(pos1.df) , function(x){qbeta(p = 0.5, shape1 = pos1.df[x,i], shape2 = pos1.df[x,i] + pos4.df[x, i])})
 }
 
 beta.2.df <- foreach(i = 3:12, .combine = cbind) %do% {
@@ -179,7 +181,7 @@ gamma.1 <- foreach(i = 3:12, .combine = cbind) %do% {
 }
 
 gamma.2 <- foreach(i = 3:12, .combine = cbind) %do% {
-   sapply(1:nrow(pos1.df) , function(x){qgamma(p = 0.5, shape = beta.1.df[x, i-2], scale = LM2.df[x,i])})
+   sapply(1:nrow(pos1.df) , function(x){qgamma(p = 0.5, shape = pos3.df[x, i-2], scale = LM2.df[x,i])})
 }
 
 gamma.1.r <- rasterFromXYZ(data.frame(pos1.df[, c("x", "y")], gamma.1))
@@ -205,8 +207,7 @@ means <- sapply(1:nlayers(all.Layers), function(x){
 variances <- sapply(1:nlayers(all.Layers), function(x){
    require(coda)
    int <- HPDinterval(as.mcmc(all.Layers[[x]][]), 0.69)
-   sd <- mean(abs(int - means[x]))
-   var <- sd^2
+   var <- mean((int - means[x])^2)
    return(var)
 })
  

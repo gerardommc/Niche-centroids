@@ -46,7 +46,10 @@ mahal.dists <- lapply(1:ncol(sample.layers), function(x){
 
 saveRDS(mahal.dists, "Simulated-species/Mahal-dists-centroids.rds")
 
-p.presence <- lapply(mahal.dists, function(x){exp(-0.5 * x)})
+p.presence <- lapply(mahal.dists, function(x){
+  r <- 10/(cellStats(x, max) - cellStats(x, min))
+  return(exp(-r * x))}
+)
 saveRDS(p.presence, "Simulated-species/P-presence.rds")
 
 library(dismo)
