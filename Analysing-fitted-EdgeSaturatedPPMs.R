@@ -2,14 +2,14 @@ library(raster); library(doParallel); library(spatstat)
 
 l.sum <- read.csv("Simulated-layers/Layer-summaries.csv")
 all.layers <- readRDS("Simulated-layers/All-simulated-layers.rds")
-config <- readRDS("Simulated-species/Sim-config-species-list-OuterCentroids.rds")
+config <- readRDS("Simulated-species/Sim-config-species-list-EdgeCentroids.rds")
 spp.layers <- lapply(1:ncol(config$layers), function(x){dropLayer(all.layers, i = c(which(! 1:nlayers(all.layers) %in% config$layers[, x])))})
-spp.points <- readRDS("Simulated-species/Species-presences-OuterCentroids.rds")
-p.spp <- readRDS("Simulated-species/P-presence-OuterCentroids.rds")
-spp.cent.cov <- readRDS("Simulated-species/Spp-cent-covs-OuterCentroids.rds")
+spp.points <- readRDS("Simulated-species/Species-presences-EdgeCentroids.rds")
+p.spp <- readRDS("Simulated-species/P-presence-EdgeCentroids.rds")
+spp.cent.cov <- readRDS("Simulated-species/Spp-cent-covs-EdgeCentroids.rds")
 
 spp.ppms <- lapply(1:1000, function(x){
-      readRDS(paste0("../Resultados/Analysis-centroids/Fitted-Outer-PPMs/PPM-", x, ".rds"))
+      readRDS(paste0("../Resultados/Analysis-centroids/Fitted-Edge-Saturated-PPMs/PPM-", x, ".rds"))
 })
 
 ppm.preds <- lapply(spp.ppms, function(x){x$pred})
@@ -54,8 +54,8 @@ vars.spp <- foreach(i = seq_along(config$layer.names), .combine = rbind) %do% {
 vars.spp <- data.frame(vars.spp)
 names(vars.spp) <- c("Normal", "Log.norm", "Beta", "Gamma")
 
-df.results <- data.frame(df.centroids, vars.spp, approach = "PPM", centr.conf = "outer")
+df.results <- data.frame(df.centroids, vars.spp, approach = "PPM", centr.conf = "edge", model = "Saturated")
 
-write.csv(df.results, "Simulated-species/Results-OuterPPMs.csv", row.names = F)
+write.csv(df.results, "Simulated-species/Results-EdgeSaturatedPPMs.csv", row.names = F)
 
 

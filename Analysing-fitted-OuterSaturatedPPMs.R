@@ -9,7 +9,7 @@ p.spp <- readRDS("Simulated-species/P-presence-OuterCentroids.rds")
 spp.cent.cov <- readRDS("Simulated-species/Spp-cent-covs-OuterCentroids.rds")
 
 spp.ppms <- lapply(1:1000, function(x){
-      readRDS(paste0("../Resultados/Analysis-centroids/Fitted-Outer-PPMs/PPM-", x, ".rds"))
+      readRDS(paste0("../Resultados/Analysis-centroids/Fitted-Outer-Saturated-PPMs/PPM-", x, ".rds"))
 })
 
 ppm.preds <- lapply(spp.ppms, function(x){x$pred})
@@ -54,8 +54,8 @@ vars.spp <- foreach(i = seq_along(config$layer.names), .combine = rbind) %do% {
 vars.spp <- data.frame(vars.spp)
 names(vars.spp) <- c("Normal", "Log.norm", "Beta", "Gamma")
 
-df.results <- data.frame(df.centroids, vars.spp, approach = "PPM", centr.conf = "outer")
+df.results <- data.frame(df.centroids, vars.spp, approach = "PPM", centr.conf = "outer", model = "Saturated")
 
-write.csv(df.results, "Simulated-species/Results-OuterPPMs.csv", row.names = F)
+write.csv(df.results, "Simulated-species/Results-OuterSaturatedPPMs.csv", row.names = F)
 
 

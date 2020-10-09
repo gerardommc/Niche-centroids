@@ -30,8 +30,8 @@ win = as.owin(im(data.mask, xcol = ux, yrow = uy)) #Data analysis window
 
 ## transforming species points to a planar point pattern
 spp.ppp <- lapply(spp.points, function(x){
-      ppp(x[, 'x'], x[, 'y'], window = win, check = F)
-}) 
+            ppp(x[, 'x'], x[, 'y'], window = win, check = F)
+      }) 
 
 ## Transforming species' layers to spatstat images
 spp.lay.im <- lapply(spp.lay.df, function(x){
@@ -43,7 +43,7 @@ spp.lay.im <- lapply(spp.lay.df, function(x){
             vec.ref = (ref.cols - 1)*max(ref.lines) + ref.lines
             vec.all[ref.vec] = X[,i]
             lay <- im(matrix(vec.all, max(ref.lines), max(ref.cols),
-                             dimnames = list(uy, ux)), xcol = ux, yrow = uy)
+                              dimnames = list(uy, ux)), xcol = ux, yrow = uy)
             return(lay)
       }
       names(lay.im.list) <- c("a", "b", "c")
@@ -52,19 +52,18 @@ spp.lay.im <- lapply(spp.lay.df, function(x){
 
 ## Fitting ppms
 spp.ppms <- lapply(seq_along(spp.ppp), function(i){
-      mod <-ppm(spp.ppp[[i]],
+      ppm.mod <-ppm(spp.ppp[[i]],
                     trend = ~ a + b + c + 
                           I(a^2) + I(b^2) + I(c^2), 
-                    covariates = spp.lay.im[[i]])
-      ppm.mod <- step(mod)
+                             covariates = spp.lay.im[[i]])
       coef <- coefficients(ppm.mod)
       rast <- raster(predict(ppm.mod, type = "trend", ngrid = c(100, 100)))
       return(list(pred = rast,
                   coef = coef))
 })
 
-dir.create("../Resultados/Analysis-centroids/Fitted-Centre-PPMs")
+dir.create("../Resultados/Analysis-centroids/Fitted-Centre-Saturated-PPMs")
 
 for(i in seq_along(spp.ppms)){ 
-      saveRDS(spp.ppms[[i]], paste0("../Resultados/Analysis-centroids/Fitted-Centre-PPMs/PPM-", i, ".rds"))
+   saveRDS(spp.ppms[[i]], paste0("../Resultados/Analysis-centroids/Fitted-Centre-Saturated-PPMs/PPM-", i, ".rds"))
 }

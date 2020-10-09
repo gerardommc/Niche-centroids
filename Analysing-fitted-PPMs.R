@@ -50,8 +50,8 @@ vars.spp <- foreach(i = seq_along(config$layer.names), .combine = rbind) %do% {
 vars.spp <- data.frame(vars.spp)
 names(vars.spp) <- c("Normal", "Log.norm", "Beta", "Gamma")
 
-df.results <- data.frame(df.centroids, vars.spp, approach = "PPM")
+df.results <- data.frame(df.centroids, vars.spp, approach = "PPM", centr.conf = "centre")
 
-write.csv(df.results, "Simulated-species/Results-PPMs.csv", row.names = F)
+write.csv(df.results, "Simulated-species/Results-CentrePPMs.csv", row.names = F)
 
 
