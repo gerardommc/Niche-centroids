@@ -1,15 +1,15 @@
-library(raster); library(doParallel); library(spatstat)
+library(raster); library(doParallel)
 
 l.sum <- read.csv("Simulated-layers/Layer-summaries.csv")
 all.layers <- readRDS("Simulated-layers/All-simulated-layers.rds")
-config <- readRDS("Simulated-species/Sim-config-species-list-OuterCentroids.rds")
+config <- readRDS("Simulated-species/Sim-config-species-list-RandomCentroids.rds")
 spp.layers <- lapply(1:ncol(config$layers), function(x){dropLayer(all.layers, i = c(which(! 1:nlayers(all.layers) %in% config$layers[, x])))})
-spp.points <- readRDS("Simulated-species/Species-presences-OuterCentroids.rds")
-p.spp <- readRDS("Simulated-species/P-presence-OuterCentroids.rds")
-spp.cent.cov <- readRDS("Simulated-species/Spp-cent-covs-OuterCentroids.rds")
+spp.points <- readRDS("Simulated-species/Species-presences-RandomCentroids.rds")
+p.spp <- readRDS("Simulated-species/P-presence-RandomCentroids.rds")
+spp.cent.cov <- readRDS("Simulated-species/Spp-cent-covs-RandomCentroids.rds")
 
 spp.ppms <- lapply(1:1000, function(x){
-      readRDS(paste0("../Resultados/Analysis-centroids/Fitted-Outer-PPMs/PPM-", x, ".rds"))
+      readRDS(paste0("../Resultados/Analysis-centroids/Fitted-Random-Saturated-PPMs/PPM-", x, ".rds"))
 })
 
 ppm.preds <- lapply(spp.ppms, function(x){x$pred})
@@ -21,18 +21,14 @@ corr.estimates <- sapply(cor.ppm.preds, function(x){x$estimate})
 ## Computing centroids
 
 centroids <- lapply(spp.ppms, function(x){
-      if(length(x$coef)==7){
-            effects <- x$coef[2:7]
-            cent.a <- - effects[1]/(2 * effects[4])
-            cent.b <- - effects[2]/(2 * effects[5])
-            cent.c <- - effects[3]/(2 * effects[6])
-            centroid <- c(a = cent.a,
-                          b = cent.b,
-                          c = cent.c)
-            return(centroid)
-      } else {
-            centroid <- c(NA, NA, NA)
-      }
+      effects <- x$coef[2:7]
+      cent.a <- - effects[1]/(2 * effects[4])
+      cent.b <- - effects[2]/(2 * effects[5])
+      cent.c <- - effects[3]/(2 * effects[6])
+      centroid <- c(a = cent.a,
+                    b = cent.b,
+                    c = cent.c)
+      return(centroid)
 })
 
 #Calculating the distance to true centroids
@@ -54,8 +50,6 @@ vars.spp <- foreach(i = seq_along(config$layer.names), .combine = rbind) %do% {
 vars.spp <- data.frame(vars.spp)
 names(vars.spp) <- c("Normal", "Log.norm", "Beta", "Gamma")
 
-df.results <- data.frame(df.centroids, vars.spp, approach = "PPM", centr.conf = "outer")
+df.results <- data.frame(df.centroids, vars.spp, approach = "PPM-sat", centr.conf = "random")
 
-write.csv(df.results, "Simulated-species/Results-OuterPPMs.csv", row.names = F)
-
-
+write.csv(df.results, "Simulated-species/Results-RandomSaturatedPPMs.csv", row.names = F)

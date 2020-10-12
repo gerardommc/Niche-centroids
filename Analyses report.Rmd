@@ -94,14 +94,16 @@ all.results <- rbind(ppms, ellips)
 ggplot(all.results) + geom_violin(aes(x = approach, y = Corr.surf)) +
       geom_boxplot(aes(x = approach, y = Corr.surf), alpha = 0.5) +
       labs(x = "Approach", y = "Correlation with generating surface") +
-   facet_grid(~centr.conf)
+   facet_grid(~centr.conf) + 
+   theme(axis.text.x = element_text(angle = 60))
 ```
 
 ```{r fig.height=3, fig.width=6}
 ggplot(all.results) + geom_violin(aes(x = approach, y = log10(Dist.true.cent), fill = approach, colour = approach), alpha = 0.3) +
       geom_boxplot(aes(x = approach, y = log10(Dist.true.cent), fill = approach, colour = approach), alpha = 0.5) +
       labs(x = "Approach", y = "Distance to true centroid") +
-   facet_grid(~ centr.conf)
+   facet_grid(~ centr.conf) +
+   theme(axis.text.x = element_text(angle = 60))
 ```
 
 

@@ -1,4 +1,4 @@
-library(raster); library(doParallel); library(spatstat)
+library(raster); library(doParallel)
 
 l.sum <- read.csv("Simulated-layers/Layer-summaries.csv")
 all.layers <- readRDS("Simulated-layers/All-simulated-layers.rds")
@@ -21,18 +21,14 @@ corr.estimates <- sapply(cor.ppm.preds, function(x){x$estimate})
 ## Computing centroids
 
 centroids <- lapply(spp.ppms, function(x){
-      if(length(x$coef)==7){
-            effects <- x$coef[2:7]
-            cent.a <- - effects[1]/(2 * effects[4])
-            cent.b <- - effects[2]/(2 * effects[5])
-            cent.c <- - effects[3]/(2 * effects[6])
-            centroid <- c(a = cent.a,
+         effects <- x$coef[2:7]
+         cent.a <- - effects[1]/(2 * effects[4])
+         cent.b <- - effects[2]/(2 * effects[5])
+         cent.c <- - effects[3]/(2 * effects[6])
+         centroid <- c(a = cent.a,
                           b = cent.b,
                           c = cent.c)
-            return(centroid)
-      } else {
-            centroid <- c(NA, NA, NA)
-      }
+         return(centroid)
 })
 
 #Calculating the distance to true centroids
@@ -54,8 +50,6 @@ vars.spp <- foreach(i = seq_along(config$layer.names), .combine = rbind) %do% {
 vars.spp <- data.frame(vars.spp)
 names(vars.spp) <- c("Normal", "Log.norm", "Beta", "Gamma")
 
-df.results <- data.frame(df.centroids, vars.spp, approach = "PPM", centr.conf = "edge", model = "Saturated")
+df.results <- data.frame(df.centroids, vars.spp, approach = "PPM-sat", centr.conf = "edge")
 
 write.csv(df.results, "Simulated-species/Results-EdgeSaturatedPPMs.csv", row.names = F)
-
-

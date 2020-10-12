@@ -1,16 +1,16 @@
-library(raster); library(doParallel); library(spatstat)
+library(raster); library(doParallel)
 
 l.sum <- read.csv("Simulated-layers/Layer-summaries.csv")
 all.layers <- readRDS("Simulated-layers/All-simulated-layers.rds")
-config <- readRDS("Simulated-species/Sim-config-species-list.rds")
+config <- readRDS("Simulated-species/Sim-config-species-list-RandomCentroids.rds")
 spp.layers <- lapply(1:ncol(config$layers), function(x){dropLayer(all.layers, i = c(which(! 1:nlayers(all.layers) %in% config$layers[, x])))})
-spp.points <- readRDS("Simulated-species/Species-presences.rds")
-p.spp <- readRDS("Simulated-species/P-presence.rds")
-spp.cent.cov <- readRDS("Simulated-species/Spp-cent-covs.rds")
+spp.points <- readRDS("Simulated-species/Species-presences-RandomCentroids.rds")
+p.spp <- readRDS("Simulated-species/P-presence-RandomCentroids.rds")
+spp.cent.cov <- readRDS("Simulated-species/Spp-cent-covs-RandomCentroids.rds")
 
 spp.ppms <- lapply(1:1000, function(x){
-      readRDS(paste0("../Resultados/Analysis-centroids/Fitted-PPMs/PPM-", x, ".rds"))
-      })
+      readRDS(paste0("../Resultados/Analysis-centroids/Fitted-Random-Stepped-PPMs/PPM-", x, ".rds"))
+})
 
 ppm.preds <- lapply(spp.ppms, function(x){x$pred})
 
@@ -21,6 +21,7 @@ corr.estimates <- sapply(cor.ppm.preds, function(x){x$estimate})
 ## Computing centroids
 
 centroids <- lapply(spp.ppms, function(x){
+   if(length(x$coef) == 7){
       effects <- x$coef[2:7]
       cent.a <- - effects[1]/(2 * effects[4])
       cent.b <- - effects[2]/(2 * effects[5])
@@ -28,8 +29,13 @@ centroids <- lapply(spp.ppms, function(x){
       centroid <- c(a = cent.a,
                     b = cent.b,
                     c = cent.c)
-      return(centroid)
+   }else{
+      centroid = c(NA, NA, NA)   
+   }
+   return(centroid)
 })
+
+table(sapply(spp.ppms, function(x){length(x$coef)}))
 
 #Calculating the distance to true centroids
 
@@ -42,16 +48,14 @@ dist.true.cents <- sapply(seq_along(centroids), function(x){
 df.centroids <- data.frame(Corr.surf = corr.estimates, Dist.true.cent = dist.true.cents)
 
 vars.spp <- foreach(i = seq_along(config$layer.names), .combine = rbind) %do% {
-   vars <- sapply(c("mean", "Log", "Beta", "Gamma"), function(x){
-      grep(pattern = x, config$layer.names[[i]])
-   })
-   return(sapply(vars, length))
+      vars <- sapply(c("mean", "Log", "Beta", "Gamma"), function(x){
+            grep(pattern = x, config$layer.names[[i]])
+      })
+      return(sapply(vars, length))
 }
 vars.spp <- data.frame(vars.spp)
 names(vars.spp) <- c("Normal", "Log.norm", "Beta", "Gamma")
 
-df.results <- data.frame(df.centroids, vars.spp, approach = "PPM", centr.conf = "centre")
+df.results <- data.frame(df.centroids, vars.spp, approach = "PPM-step", centr.conf = "random")
 
-write.csv(df.results, "Simulated-species/Results-CentrePPMs.csv", row.names = F)
-
-
+write.csv(df.results, "Simulated-species/Results-RandomSteppedPPMs.csv", row.names = F)

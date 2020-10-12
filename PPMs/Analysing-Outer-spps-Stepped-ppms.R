@@ -2,11 +2,11 @@ library(raster); library(doParallel); library(spatstat)
 
 l.sum <- read.csv("Simulated-layers/Layer-summaries.csv")
 all.layers <- readRDS("Simulated-layers/All-simulated-layers.rds")
-config <- readRDS("Simulated-species/Sim-config-species-list-RandomCentroids.rds")
+config <- readRDS("Simulated-species/Sim-config-species-list-OuterCentroids.rds")
 spp.layers <- lapply(1:ncol(config$layers), function(x){dropLayer(all.layers, i = c(which(! 1:nlayers(all.layers) %in% config$layers[, x])))})
-spp.points <- readRDS("Simulated-species/Species-presences-RandomCentroids.rds")
-p.spp <- readRDS("Simulated-species/P-presence-RandomCentroids.rds")
-spp.cent.cov <- readRDS("Simulated-species/Spp-cent-covs-RandomCentroids.rds")
+spp.points <- readRDS("Simulated-species/Species-presences-OuterCentroids.rds")
+p.spp <- readRDS("Simulated-species/P-presence-OuterCentroids.rds")
+spp.cent.cov <- readRDS("Simulated-species/Spp-cent-covs-OuterCentroids.rds")
 
 
 ### Formatting data for spatstat
@@ -31,7 +31,7 @@ win = as.owin(im(data.mask, xcol = ux, yrow = uy)) #Data analysis window
 ## transforming species points to a planar point pattern
 spp.ppp <- lapply(spp.points, function(x){
       ppp(x[, 'x'], x[, 'y'], window = win, check = F)
-}) 
+})
 
 ## Transforming species' layers to spatstat images
 spp.lay.im <- lapply(spp.lay.df, function(x){
@@ -52,18 +52,19 @@ spp.lay.im <- lapply(spp.lay.df, function(x){
 
 ## Fitting ppms
 spp.ppms <- lapply(seq_along(spp.ppp), function(i){
-      ppm.mod <-ppm(spp.ppp[[i]],
-                    trend = ~ a + b + c + 
-                          I(a^2) + I(b^2) + I(c^2), 
+      mod <-ppm(spp.ppp[[i]],
+                    trend = ~ a + b + c +
+                          I(a^2) + I(b^2) + I(c^2),
                     covariates = spp.lay.im[[i]])
+      ppm.mod <- step(mod)
       coef <- coefficients(ppm.mod)
       rast <- raster(predict(ppm.mod, type = "trend", ngrid = c(100, 100)))
       return(list(pred = rast,
                   coef = coef))
 })
 
-dir.create("../Resultados/Analysis-centroids/Fitted-Random-PPMs")
+dir.create("../Resultados/Analysis-centroids/Fitted-Outer-Stepped-PPMs")
 
-for(i in seq_along(spp.ppms)){ 
-      saveRDS(spp.ppms[[i]], paste0("../Resultados/Analysis-centroids/Fitted-Random-PPMs/PPM-", i, ".rds"))
+for(i in seq_along(spp.ppms)){
+      saveRDS(spp.ppms[[i]], paste0("../Resultados/Analysis-centroids/Fitted-Outer-Stepped-PPMs/PPM-", i, ".rds"))
 }

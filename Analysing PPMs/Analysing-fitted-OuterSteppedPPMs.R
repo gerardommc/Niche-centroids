@@ -1,4 +1,4 @@
-library(raster); library(doParallel); library(spatstat)
+library(raster); library(doParallel)
 
 l.sum <- read.csv("Simulated-layers/Layer-summaries.csv")
 all.layers <- readRDS("Simulated-layers/All-simulated-layers.rds")
@@ -9,7 +9,7 @@ p.spp <- readRDS("Simulated-species/P-presence-OuterCentroids.rds")
 spp.cent.cov <- readRDS("Simulated-species/Spp-cent-covs-OuterCentroids.rds")
 
 spp.ppms <- lapply(1:1000, function(x){
-      readRDS(paste0("../Resultados/Analysis-centroids/Fitted-Outer-Saturated-PPMs/PPM-", x, ".rds"))
+      readRDS(paste0("../Resultados/Analysis-centroids/Fitted-Outer-Stepped-PPMs/PPM-", x, ".rds"))
 })
 
 ppm.preds <- lapply(spp.ppms, function(x){x$pred})
@@ -29,10 +29,10 @@ centroids <- lapply(spp.ppms, function(x){
             centroid <- c(a = cent.a,
                           b = cent.b,
                           c = cent.c)
-            return(centroid)
       } else {
             centroid <- c(NA, NA, NA)
       }
+   return(centroid)
 })
 
 #Calculating the distance to true centroids
@@ -54,8 +54,6 @@ vars.spp <- foreach(i = seq_along(config$layer.names), .combine = rbind) %do% {
 vars.spp <- data.frame(vars.spp)
 names(vars.spp) <- c("Normal", "Log.norm", "Beta", "Gamma")
 
-df.results <- data.frame(df.centroids, vars.spp, approach = "PPM", centr.conf = "outer", model = "Saturated")
+df.results <- data.frame(df.centroids, vars.spp, approach = "PPM-step", centr.conf = "outer")
 
-write.csv(df.results, "Simulated-species/Results-OuterSaturatedPPMs.csv", row.names = F)
-
-
+write.csv(df.results, "Simulated-species/Results-OuterSteppedPPMs.csv", row.names = F)
