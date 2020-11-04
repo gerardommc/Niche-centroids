@@ -11,49 +11,51 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Introduction
 
-These analyses show how traditional characterisation of niche centroids may reduce its power depending on the statistical distribution of the environmental layers used to infer species' fundamental niches. The excercise is based purely on simulated datasets, incuding the environmental raster layers. 
+These analyses are a comparison of two approaches to characterise niche centroids: *envelopes* and *point process models*, and ho the niche centroid estimates from these two methods may be affected by the statistical distribution of the environmental layers used to estimate them. The excercise is based purely on simulated datasets, incuding the environmental conditions. 
 
 ## Simulating \lq\lq environmental\rq\rq\ layers
 
-The latter ones were simulated using a multivariate normal distribution number generator where the shared variance among generated numbers depends on an exponential kernel (a special case of the Mattérn function). If $x_1, x_2$ are two data points, the covariance function for those points is:
+Environmental conditions were simulated using a multivariate normal distribution pseudo-random number generator where the shared variance among numbers depends on an exponential kernel (a special case of the Mattérn function). If $x_1, x_2$ are two data points, the covariance function for those points is:
 
 $$
 \mathrm{cov} \left( x_1, x_2 \right) = \sigma^2 \exp \left( - \lambda \cdot \bar{s_{x_1, x_2}} \right)
 $$
 
-where $\sigma^2$ is the variance of the entire layer being simulated, $\bar{s}_{x_1, x_2}$ is the linear euclidean distance pairs of points $x_1, x_2$, and $\lambda$ is the decay rate of the expected variance between pixels. Large $\lambda$ values result in layers with little spatial autocorrelation.
+where $\sigma^2$ is the variance of the entire layer being simulated, $\bar{s}_{x_1, x_2}$ is the linear euclidean distance between pairs of points $x_1, x_2$, and $\lambda$ is the decay rate of the expected variance between pixels. Large $\lambda$ values result in layers with little spatial autocorrelation, whereas small $\lambda$ values make for whichly autocorrelated surfaces.
 
-Using this method I generated five sets of ten normally distributed layers. Each of the five sets differred in the settings used to generate each layer. Each layers' mean, $\sigma$ and $\lambda$ were generated randomly. Two sets had relatively large means, variances and decay rates, and the remaining three sets had small means. The layers with small means were used to generate the variables with log-normal, beta and gamma distributions, using each the log-normal layers as the shape/rate parameters of the latter distributions.
+Using this method I generated five sets of ten normally-distributed layers. Each of the five sets differred in the settings used to generate each layer. Each layers' mean, $\sigma$ and $\lambda$ were generated randomly. Two sets had relatively large means, variances and decay rates, and the remaining three sets had small means. The layers with small means were used to generate the variables with log-normal, beta and gamma distributions, using each of the log-normal layers as the shape/rate parameters of the latter distributions.
 
 ## Simulating species
 
-For this first excercise I generated all the possible combinations of three layers from the final 100 layers. Then randomly sampled 1000 layer combinations and extracted the mode using the estimated kernel density from that layer, thus the centroid represents the highest probability interval for that layer on the basis of the assumed optimal bandwidth of the kernel density estimation.
+For this first excercise I generated all the possible combinations of three layers from the final 100 layers, and then randomly sampled 1000 combinations to simulate the species based on four scenarios on the basis of the location of the centroid. Each centroid setting was:
 
-Then using the extracted modes as a centroid I calculated the covariance between variables to project into a single raster layer the Mahalanobis distance to the estimated centroid. The resulting distance layer was transformed to a probability of presence layer using a logistic transform:
+1. Mode or highest probability interval of each environmental layer (Centre)
+2. Randomly selected value within the range of each variable (Random)
+3. Close to a variable's largest or smallest value by randomly selecting the the 5$^{th}$ or 95$^{th}$, percentile (Edge)
+4. Out of the range of simulated values, but relatively close to either the maximum of minimum ($x_{max/min} +/-  |x_{max/ min} - x_{99\%/1\%} |$ respectively; Outer)
+
+
+Once obtained the centroid environmental coordinates I calculated the covariance between variables to project into a single raster layer, the Mahalanobis distance to the simulated centroids. Each distance-to-centroid layer was transformed to a probability layer using an exponential transform:
 
 $$
 P = \exp(-r \cdot \mathrm{dist}) \\
 r = \frac{10}{\max(\mathrm{dist}) - \min(\mathrm{rist})}
 $$
-
-Then I generated random points in the probability surface using the `randomPoints` function of the **dismo** package. The number of points generated was random and was in average 500 with a standard deviation of 90.
+Then I generated 500 random points with the `randomPoints` function of the **dismo** package, using the probability surface as sampling probability.
 
 ## Characterising centroids
 
-### Traditional approach
-
-I tried to retrieve the centroids of the simulated species occurrences using the **ntbox** package function `ellipsoidfit`. Then from the fitted ellipsoid objects I extracted the estimated centroids and the distance to centroid layer.
-
-### Poisson point process model approach
-
-I fitted a Poisson point process model to each generated species using the same model formula for all species:
+I tried to retrieve the centroids of the simulated species occurrences using the **ntbox** package function `ellipsoidfit` and with point process models (PPMs). For PPMs I used two approaches, one fitting a *saturated* model, using the same model formula for all species:
 
 $$
 \log(\lambda) = \alpha + \beta_1 X_1 + \beta_2 X_2 + \beta_3 X_3 + \beta'_1 X_1^2 + \beta'_2 X_2^2 + \beta'_3 X_3^2
 $$
+
 where the $X$'s are the environmental layers used to simulate each species, $\alpha$ is the model intercept, and $\beta$'s are each layer effects. In this case $\lambda$ refers to point intensity, in contrast with the exponential covariance function.
 
-To extract the centroids from this model formula after estimating $\alpha$ and $\beta$'s I obtained the partial derivative of $\log \lambda$ with respect to each $X$:
+And then another PPM by stepping the model formula to reduce the AIC (*stepped* models).
+
+To extract the centroids from these models after estimating $\alpha$ and $\beta$'s I obtained the partial derivative of $\log \lambda$ with respect to each $X$:
 
 $$
 \frac{\partial \log(\lambda)}{\partial X_i} = \beta_i + 2 \cdot \beta'_i X_i
@@ -65,8 +67,7 @@ $$
 X^*_i =  - \frac{\beta_i}{2 \cdot \beta'_i}
 $$
 
-
-This approach works if and only if $\beta'_i < 0$.
+This approach works if and only if $\beta'_i < 0$, and if the final model formula of the *stepped* models kept all terms for $X_{1, 2, 3}$.
 
 ### Comparing results
 
@@ -95,7 +96,7 @@ ggplot(all.results) + geom_violin(aes(x = approach, y = Corr.surf)) +
       geom_boxplot(aes(x = approach, y = Corr.surf), alpha = 0.5) +
       labs(x = "Approach", y = "Correlation with generating surface") +
    facet_grid(~centr.conf) + 
-   theme(axis.text.x = element_text(angle = 60))
+   theme(axis.text.x = element_text(angle = 60, hjust = 1))
 ```
 
 ```{r fig.height=3, fig.width=6}
@@ -103,43 +104,169 @@ ggplot(all.results) + geom_violin(aes(x = approach, y = log10(Dist.true.cent), f
       geom_boxplot(aes(x = approach, y = log10(Dist.true.cent), fill = approach, colour = approach), alpha = 0.5) +
       labs(x = "Approach", y = "Distance to true centroid") +
    facet_grid(~ centr.conf) +
-   theme(axis.text.x = element_text(angle = 60))
+   theme(axis.text.x = element_text(angle = 60, hjust = 1), 
+         legend.position = "none")
 ```
 
 
 This is because the centroids characterised with PPMs tended to be closer to the real centroid than centroids characterised by ellipses:
 
-```{r echo=F, fig.height=5, fig.width=5, warning=FALSE, message = F, fig.align='center'}
+```{r echo=F, fig.height=3, fig.width=6, warning=FALSE, message = F, fig.align='center'}
 ggplot(all.results) + geom_point(aes(x = log10(Dist.true.cent), y = Corr.surf, colour = approach), alpha = 0.1) + 
       geom_smooth(aes(x = log10(Dist.true.cent), y = Corr.surf, colour = approach, fill = approach), alpha = 0.5) + 
-      labs(x = "log-Distance to true centroid", y = "Correlation with generating surface", 
+      labs(x = "log-Distance to true centroid", y = "Correlation with surface", 
            colour = "Approach", fill = "Approach") + 
-   facet_wrap(facets = "centr.conf")
+   facet_grid(~ centr.conf) +
+   theme(legend.position = "bottom")
 ```
 
 A big problem for PPMs however, is that outliers, on the basis of distance to real centroids, are a lot farther away from the real centroids than for ellipses, and this is probably due to the polynomial nature of the formulas (i. e. $\beta'_i > 0$ will throw away any possible estimation of the centroid). By visual inspection of the above plots one would be fooled to think that higher correlation with the generating surface is enough to conclude that the approximation to the real centroid is better, because PPMs are almost always more correlated with the generating surface. But as I mentioned above, when $\beta'_i > 0$, ellipses are a better guess than PPMs.
 
-I calculated the fraction of cases in which PPMs *outperformed* ellipses, on the basis of the correlation with the generating surface and the distance to the real centroid, by substracting the correlation coefficient and the distance to true centroids respectively, from those scores for the PPMs. PPMs in fact usual are twice highly correlated with the generating surface than ellipsoids:
+I calculated the fraction of cases in which PPMs *outperformed* ellipses based on the similarity (correlation) between the estimated suitability surface (ellipsoids) and point intensity (PPMs) with the generating surface and the distance to the real centroid. To do this I substracted the correlation coefficient and the distance to true centroids respectively. PPMs far outperfom ellipses in their capacity to generate a surface that resembles the surface that generated the data by ~20-35 x:
 
 ```{r Differences between approaches}
-corr.dif <- ppms$Corr.surf - ellips$Corr.surf
-dist.dif <- ppms$Dist.true.cent - ellips$Dist.true.cent
+ppms.sat <- subset(ppms, approach == "PPM-sat")
+ppms.step <- subset(ppms, approach == "PPM-step")
 
-p.cor <- length(which(corr.dif >0))/length(corr.dif)
-p.dif <- length(which(dist.dif > 0))/length(dist.dif)
+corr.dif.sat <- ppms.sat$Corr.surf - ellips$Corr.surf
+dist.dif.sat <- ellips$Dist.true.cent - ppms.sat$Dist.true.cent
 
-p.cor/(1-p.cor)
+nas <- !is.na(ppms.step$Dist.true.cent)
+
+corr.dif.step <- ppms.step$Corr.surf[nas] - ellips$Corr.surf[nas]
+dist.dif.step <- ellips$Dist.true.cent[nas] - ppms.step$Dist.true.cent[nas]
+
+p.cor.sat <- length(which(corr.dif.sat > 0))/length(corr.dif.sat)
+p.dif.sat <- length(which(dist.dif.sat > 0))/length(dist.dif.sat)
+
+p.cor.step <- length(which(corr.dif.step > 0))/length(corr.dif.step)
+p.dif.step <- length(which(dist.dif.step > 0))/length(dist.dif.step)
+
+p.cor.sat/(1 - p.cor.sat)
+p.cor.step/(1 - p.cor.step)
 ```
 
-But regarding distance from the real centroid, the difference only marginally favours PPMs.
+Regarding distance from the real centroid, the difference only marginally favours PPMs with *saturated* model formulas.
 
 ```{r}
-p.dif/(1-p.dif)
+p.dif.sat/(1 - p.dif.sat)
 ```
 
-That is distance from real centroids is only smaller for PPMs in 7% of the cases.
+And clearly favours *stepped* PPMs if able to find statistical evidence of environmental effects:
+
+```{r}
+p.dif.step/(1 - p.dif.step)
+```
+
+Although confusing, this is very good evidence in favour of ellipses, because stepped PPMs only means good statistical evidence of clear environmental effents. In addition imputation of centroids, even when there is little statistical evidence, will be a lot closer than estimates from PPMs (these are thrown off the chart if any of the $\beta_i^' > 0$).
 
 As mentioned above I will explore in greater detail the patterns in these synthetic analyses, first by accounting for the distribution of the variables used in the generating surfaces, and then trying to improve PPM estimates by tweaking model formulas.
+
+## Deriving a statistical measure that explains *performance*
+
+```{r}
+library(raster); library(foreach)
+all.layers <- readRDS("Simulated-layers/All-simulated-layers.rds")
+
+config <- lapply(paste0("Simulated-species/Sim-config-species-list", 
+                  c("", "-EdgeCentroids",
+                    "-OuterCentroids",
+                    "-RandomCentroids"), ".rds"), readRDS)
+
+spp.layers <- foreach(k = 1:ncol(config[[1]]$layers)) %do% {
+      dropLayer(all.layers, i = c(which(! 1:nlayers(all.layers) %in% config[[1]]$layers[, k])))
+   }
+
+pres <- lapply(paste0("Simulated-species/Species-presences",
+                      c(".rds",
+                        "-EdgeCentroids.rds",
+                        "-OuterCentroids.rds",
+                        "-RandomCentroids.rds")), readRDS)
+```
+
+```{r "computing skewness with fisher's method"}
+library(parallel); library(doParallel)
+s <- seq(1, 10000, by = 10)
+
+env.skew <- mclapply(spp.layers, function(x){
+      df <- as.matrix(x)[s, ]
+      res <- MVN::mvn(df, mvnTest = "hz", multivariatePlot = F)$multivariateNormality$HZ
+      return(res)
+   },
+   mc.cores = getOption("mc.cores", 6L))
+env.skew <- unlist(env.skew)
+
+registerDoParallel(cores = 4)
+pres.skew <- foreach(i = seq_along(pres)) %do%{
+   foreach(j = seq_along(pres[[i]]), .combine = c) %dopar% {
+      df <- extract(spp.layers[[i]], pres[[i]][[j]])
+      res <- MVN::mvn(df, mvnTest = "hz", multivariatePlot = F)$multivariateNormality$HZ
+      #ske <- sum(abs(res[2,]))
+      return(res)  
+   }
+}
+pres.skew <- unlist(pres.skew)
+```
+
+```{r}
+ppms.sat$Skewness.env <- rep(env.skew, 4)
+ppms.step$Skewness.env <- rep(env.skew, 4)
+ellips$Skewness.env <-  rep(env.skew, 4)
+
+ppms.sat$Skewness.pres <- pres.skew
+ppms.step$Skewness.pres <- pres.skew
+ellips$Skewness.pres <- pres.skew
+
+dat.skew <- rbind(ppms.sat, ellips)
+dat.skew$Skew.dif <- with(dat.skew, Skewness.pres - Skewness.env)
+```
+
+```{r}
+ggplot(dat.skew) + geom_boxplot(aes(x = centr.conf, y = Skew.dif)) + 
+   geom_violin(aes(x = centr.conf, y = Skew.dif), alpha = 0.3)
+```
+
+
+```{r}
+ggplot(ppms.sat) + geom_boxplot(aes(x = centr.conf, y = (Skewness.pres), fill = centr.conf), alpha = 0.3) 
+ggplot(ppms.sat) + geom_boxplot(aes(x = centr.conf, y = log10(Skewness.env), fill = centr.conf), alpha = 0.3)
+
+library(reshape)
+
+dat.skew.long <- melt(dat.skew, measure.vars = c("Skewness.env", "Skewness.pres"))
+```
+
+```{r}
+ggplot(dat.skew.long) + geom_point(aes(x = (value), y = log10(Dist.true.cent), colour = approach), alpha = 0.01) +
+   facet_grid(rows = vars(variable), cols = vars(centr.conf))
+```
+
+```{r}
+ggplot(dat.skew) + geom_hex(aes(x = Skewness.env, y = log10(Dist.true.cent))) + 
+   scale_fill_continuous(type = "viridis", trans = "log10") +
+   geom_smooth(aes(x = Skewness.env, y = log10(Dist.true.cent), colour = "red")) +
+   facet_grid(rows = vars(approach), cols = vars(centr.conf))
+```
+
+
+```{r}
+ggplot(dat.skew) + geom_hex(aes(x = Skewness.env, y = Corr.surf)) + 
+   geom_smooth(aes(x = Skewness.env, y = Corr.surf, colour = "red"), alpha = 0.3, level = 0.01) +
+   facet_grid(rows = vars(approach), cols = vars(centr.conf))
+```
+
+```{r}
+ggplot(dat.skew) + geom_point(aes(x = Skewness.pres, y = Corr.surf, colour = approach), alpha = 0.3) + 
+   geom_smooth(aes(x = Skewness.pres, y = Corr.surf, colour = approach), alpha = 0.3, method = "lm") +
+   facet_grid(~ centr.conf)
+
+ggplot(dat.skew) + geom_point(aes(x = Skewness.pres, y = log10(Dist.true.cent), colour = approach), alpha = 0.3) + 
+   facet_grid(~ centr.conf)
+ggplot(dat.skew) + geom_point(aes(x = Skewness.env, y = log10(Dist.true.cent), colour = approach), alpha = 0.3) + 
+   facet_grid(~ centr.conf)
+
+```
+
 
 ## Exploring the best and worst cases
 

@@ -10,7 +10,7 @@ p.spp <- readRDS("Simulated-species/P-presence-OuterCentroids.rds")
 spp.layers <- lapply(1:ncol(config$layers), function(x){dropLayer(all.layers, i = c(which(! 1:nlayers(all.layers) %in% config$layers[, x])))})
 
 
-registerDoParallel(cores = 6)
+registerDoParallel(cores = 2)
 all.ellips <- foreach(i = seq_along(spp.points)) %dopar% {
       data <- data.frame(extract(spp.layers[[i]], spp.points[[i]]))
       data <- na.omit(data)

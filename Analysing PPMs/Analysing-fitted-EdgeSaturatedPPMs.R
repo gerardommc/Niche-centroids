@@ -8,13 +8,13 @@ spp.points <- readRDS("Simulated-species/Species-presences-EdgeCentroids.rds")
 p.spp <- readRDS("Simulated-species/P-presence-EdgeCentroids.rds")
 spp.cent.cov <- readRDS("Simulated-species/Spp-cent-covs-EdgeCentroids.rds")
 
-spp.ppms <- lapply(1:1000, function(x){
+spp.ppms <- lapply(1:2500, function(x){
       readRDS(paste0("../Resultados/Analysis-centroids/Fitted-Edge-Saturated-PPMs/PPM-", x, ".rds"))
 })
 
 ppm.preds <- lapply(spp.ppms, function(x){x$pred})
 
-cor.ppm.preds <- lapply(1:1000, function(x){cor.test(ppm.preds[[x]][], p.spp[[x]][])})
+cor.ppm.preds <- lapply(1:2500, function(x){cor.test(ppm.preds[[x]][], p.spp[[x]][])})
 
 corr.estimates <- sapply(cor.ppm.preds, function(x){x$estimate})
 

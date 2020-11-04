@@ -8,13 +8,13 @@ spp.points <- readRDS("Simulated-species/Species-presences-RandomCentroids.rds")
 p.spp <- readRDS("Simulated-species/P-presence-RandomCentroids.rds")
 spp.cent.cov <- readRDS("Simulated-species/Spp-cent-covs-RandomCentroids.rds")
 
-spp.ppms <- lapply(1:1000, function(x){
+spp.ppms <- lapply(1:2500, function(x){
       readRDS(paste0("../Resultados/Analysis-centroids/Fitted-Random-Stepped-PPMs/PPM-", x, ".rds"))
 })
 
 ppm.preds <- lapply(spp.ppms, function(x){x$pred})
 
-cor.ppm.preds <- lapply(1:1000, function(x){cor.test(ppm.preds[[x]][], p.spp[[x]][])})
+cor.ppm.preds <- lapply(1:2500, function(x){cor.test(ppm.preds[[x]][], p.spp[[x]][])})
 
 corr.estimates <- sapply(cor.ppm.preds, function(x){x$estimate})
 
@@ -30,7 +30,7 @@ centroids <- lapply(spp.ppms, function(x){
                     b = cent.b,
                     c = cent.c)
    }else{
-      centroid = c(NA, NA, NA)   
+      centroid = c(NA, NA, NA)
    }
    return(centroid)
 })

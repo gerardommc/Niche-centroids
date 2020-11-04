@@ -4,7 +4,7 @@ all.layers <- readRDS("Simulated-layers/All-simulated-layers.rds")
 l.sum <- read.csv("Simulated-layers/Layer-summaries.csv", stringsAsFactors = F)
 
 total.combinations <- combn(x = 100, m = 3)
-s <- sample(1:ncol(total.combinations), 1000) 
+s <- readRDS("Simulated-species/Combn-id-layers.rds")
 sample.layers <- total.combinations[, s]
 
 layer.names <- lapply(1:ncol(sample.layers), function(x){l.sum$Layer.name[sample.layers[, x]]})
@@ -55,8 +55,7 @@ saveRDS(mahal.dists, "Simulated-species/Mahal-dists-RandomCentroids.rds")
 
 p.presence <- lapply(mahal.dists, function(x){
    r <- 10/(cellStats(x, max) - cellStats(x, min))
-   return(exp(-r * x))}
-)
+   return(round(exp(-r * x), 3))})
 saveRDS(p.presence, "Simulated-species/P-presence-RandomCentroids.rds")
 
 library(dismo)

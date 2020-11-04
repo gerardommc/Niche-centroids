@@ -5,7 +5,7 @@ l.sum <- read.csv("Simulated-layers/Layer-summaries.csv")
 spp.points <- readRDS("Simulated-species/Species-presences-OuterCentroids.rds")
 p.spp <- readRDS("Simulated-species/P-presence-OuterCentroids.rds")
 config <- readRDS("Simulated-species/Sim-config-species-list-OuterCentroids.rds")
-ellips <- lapply(1:1000, function(x){
+ellips <- lapply(1:2500, function(x){
       readRDS(paste0("../Resultados/Analysis-centroids/Fitted-Outer-Ellipses/Ellips-", x, ".rds"))
 })
 spp.layers <- lapply(1:ncol(config$layers), function(x){dropLayer(all.layers, i = c(which(! 1:nlayers(all.layers) %in% config$layers[, x])))})
@@ -39,5 +39,3 @@ names(vars.spp) <- c("Normal", "Log.norm", "Beta", "Gamma")
 df.results <- data.frame(df.centroids, vars.spp, approach = "Ellipses", centr.conf = "outer")
 
 write.csv(df.results, "Simulated-species/Results-OuterEllipses.csv", row.names = F)
-
-
