@@ -20,8 +20,17 @@ config <- lapply(paste0("Simulated-species/Sim-config-species-list",
                           "-OuterCentroids",
                           "-RandomCentroids"), ".rds"), readRDS)
 
+library(foreach)
+
+bimod <- lapply(1:nlayers(all.layers), function(x){diptest::dip.test(all.layers[[x]][])})
+
 spp.layers <- foreach(k = 1:ncol(config[[1]]$layers)) %do% {
       dropLayer(all.layers, i = c(which(! 1:nlayers(all.layers) %in% config[[1]]$layers[, k])))
+}
+
+comp.bimod <- foreach(k = 1:ncol(config[[1]]$layers), .combine = c) %do% {
+   b <- bimod[c(which(1:nlayers(all.layers) %in% config[[1]]$layers[, k]))]
+   sum(sapply(b, function(x){x$statistic}))
 }
 
 pres <- lapply(paste0("Simulated-species/Species-presences",
@@ -45,6 +54,10 @@ env.skew <- foreach(i = seq_along(spp.layers), .combine = c) %dopar% {
 ppms.sat$Skewness.env <- rep(env.skew, 4)
 ppms.step$Skewness.env <- rep(env.skew, 4)
 ellips$Skewness.env <-  rep(env.skew, 4)
+
+ppms.sat$bimod <- rep(comp.bimod, 4)
+ppms.step$bimod <- rep(comp.bimod, 4)
+ellips$bimod <- rep(comp.bimod, 4)
 
 dat.skew <- rbind(ppms.sat, ellips)
 
@@ -70,6 +83,8 @@ ggplot(dat.skew) + geom_hex(aes(x = Skewness.env, y = Corr.surf)) +
       facet_grid(rows = vars(approach), cols = vars(centr.conf))
 dev.off()
 
+
+
 #Analysis of the frequency of positive squared terms B'
 
 ppm.files <- paste0("../Resultados/Analysis-centroids/Fitted-", 
@@ -88,8 +103,63 @@ neg.coefs <- sapply(ppm.mods, function(x){(any(x$coef[5:7] > 0))})
 
 ppms.sat$pos.neg <- neg.coefs
 
-ggplot(ppms.sat) + geom_boxplot(aes(x = pos.neg, y = log10(Dist.true.cent))) +
-   facet_grid(~ centr.conf)
+pdf("../Graphs/NegCoef-DistCent.pdf", width = 9, height = 4.5)
+ggplot(ppms.sat) + geom_point(aes(x = pos.neg, y = log10(Dist.true.cent), 
+                                  colour = Skewness.env),
+                              position = position_jitter(width = 0.2), alpha = 0.3) +
+   scale_colour_continuous(type = "viridis") + 
+   geom_boxplot(aes(x = pos.neg, y = log10(Dist.true.cent)), alpha = 0.5) +
+   facet_grid(~ centr.conf) +
+   labs(x = "Presence of positive squared terms",
+        y = "Distance to true centroid", 
+        colour = "Skewness")
+dev.off()
 
+pdf("../Graphs/NegCoef-NumModels.pdf", width = 9, height = 4.5)
 ggplot(ppms.sat) + geom_bar(aes(x = pos.neg), position = "dodge", alpha = 0.5) +
-   facet_grid(~ centr.conf)
+   facet_grid(~ centr.conf) +
+   labs(x = "Presence of positive squared terms",
+        y = "Number of models")
+dev.off()
+
+pdf("../Graphs/NegCoef-Skewness.pdf", width = 9, height = 4.5)
+ggplot(ppms.sat) + geom_boxplot(aes(x = pos.neg, y = Skewness.env)) + 
+   geom_violin(aes(x = pos.neg, y = Skewness.env), alpha = 0.3) +
+   facet_grid(~ centr.conf) +
+   labs(x = "Presence of positive squared terms", 
+        y = "Multivariate environmental skewness")
+dev.off()
+
+#Statistics for skewness data & vis
+skew.stats <- reshape :: melt(ppms.sat[1:2500,], 
+                             measure.vars = c("Normal", "Log.norm", "Gamma", "Beta"),
+                             id.vars = c("Skewness.env", "Corr.surf", "Dist.true.cent"))
+
+library(dplyr)
+
+skew.summ <- skew.stats %>% group_by(variable, value) %>% 
+   summarise(Skewness.env = mean(Skewness.env))
+
+pdf("../Graphs/Skewness-distributions.pdf", width = 6, height = 4.5)
+ggplot(skew.summ) + geom_tile(aes(x = value, y = variable, fill = Skewness.env)) + 
+   scale_fill_viridis_c() + 
+   labs(x = "Number of dimensions",
+        y = "Distribution", fill = "Skewness")
+dev.off()
+
+
+#Statistics for bimodality data & vis
+bimod.stats <- reshape :: melt(ppms.sat[1:2500,], 
+                              measure.vars = c("Normal", "Log.norm", "Gamma", "Beta"),
+                              id.vars = c("bimod", "Corr.surf", "Dist.true.cent"))
+
+bimod.summ <- bimod.stats %>% group_by(variable, value) %>% 
+   summarise(bimod = mean(bimod))
+
+pdf("../Graphs/Bimodality-distributions.pdf", width = 6, height = 4.5)
+ggplot(bimod.summ) + geom_tile(aes(x = value, y = variable, fill = bimod)) + 
+   scale_fill_viridis_c() + 
+   labs(x = "Number of dimensions",
+        y = "Distribution",
+        fill = "Bimodality")
+dev.off()
