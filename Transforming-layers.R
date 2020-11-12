@@ -55,7 +55,10 @@ write.csv(df.sk, "Simulated-layers/Skewness-difference-NORM-DATA.csv")
 
 library(ggplot2)
 
-ggplot(df.sk) + geom_boxplot(aes(x = type, y = sk))
+pdf("../Graphs/Skewness-Corr-Uncorr.pdf", width = 4, height = 4)
+ggplot(df.sk) + geom_boxplot(aes(x = type, y = sk)) + 
+   labs(x = "Variables", y = "Multivariate skewness")
+dev.off()
 
 t.test(env.skew, env.skew.norm, paired = T)
 
