@@ -8,13 +8,19 @@ all.results <- rbind(ppms, ellips)
 
 #Model subsets
 ppms.sat <- subset(ppms, approach == "PPM-sat")
+ppms.sat.norm <- subset(ppms, approach == "PPM-sat-NORM")
 ppms.step <- subset(ppms, approach == "PPM-step")
+
+ellips.norm <- subset(ellips, approach == "Ellipses-NORM")
+ellips <- subset(ellips, approach == "Ellipses")
 
 corr.dif.sat <- ppms.sat$Corr.surf - ellips$Corr.surf
 dist.dif.sat <- ellips$Dist.true.cent - ppms.sat$Dist.true.cent
 
 #Environmental layers
 all.layers <- readRDS("Simulated-layers/All-simulated-layers.rds")
+all.layers.norm <- readRDS("Simulated-layers/All-simulated-layers-NORM.rds")
+
 config <- lapply(paste0("Simulated-species/Sim-config-species-list", 
                         c("", "-EdgeCentroids",
                           "-OuterCentroids",
@@ -23,13 +29,23 @@ config <- lapply(paste0("Simulated-species/Sim-config-species-list",
 library(foreach)
 
 bimod <- lapply(1:nlayers(all.layers), function(x){diptest::dip.test(all.layers[[x]][])})
+bimod.norm <- lapply(1:nlayers(all.layers.norm), function(x){diptest::dip.test(all.layers.norm[[x]][])})
 
 spp.layers <- foreach(k = 1:ncol(config[[1]]$layers)) %do% {
       dropLayer(all.layers, i = c(which(! 1:nlayers(all.layers) %in% config[[1]]$layers[, k])))
 }
 
+spp.layers.norm <- foreach(k = 1:ncol(config[[1]]$layers)) %do% {
+   dropLayer(all.layers.norm, i = c(which(! 1:nlayers(all.layers.norm) %in% config[[1]]$layers[, k])))
+}
+
 comp.bimod <- foreach(k = 1:ncol(config[[1]]$layers), .combine = c) %do% {
    b <- bimod[c(which(1:nlayers(all.layers) %in% config[[1]]$layers[, k]))]
+   sum(sapply(b, function(x){x$statistic}))
+}
+
+comp.bimod.norm <- foreach(k = 1:ncol(config[[1]]$layers), .combine = c) %do% {
+   b <- bimod.norm[c(which(1:nlayers(all.layers.norm) %in% config[[1]]$layers[, k]))]
    sum(sapply(b, function(x){x$statistic}))
 }
 
@@ -50,16 +66,31 @@ env.skew <- foreach(i = seq_along(spp.layers), .combine = c) %dopar% {
       return(res)
 }
 
+env.skew.norm <- foreach(i = seq_along(spp.layers.norm), .combine = c) %dopar% {
+   df <- as.matrix(spp.layers.norm[[i]])[s, ]
+   res <- MVN::mvn(df, mvnTest = "hz", multivariatePlot = F)$multivariateNormality$HZ
+   return(res)
+}
+
 #Adding the analyses to model data
 ppms.sat$Skewness.env <- rep(env.skew, 4)
+ppms.sat.norm$Skewness.env <- rep(env.skew.norm, 4)
 ppms.step$Skewness.env <- rep(env.skew, 4)
-ellips$Skewness.env <-  rep(env.skew, 4)
 
-ppms.sat$bimod <- rep(comp.bimod, 4)
+ellips$Skewness.env <-  rep(env.skew, 4)
+ellips.norm$Skewness.env <-  rep(env.skew.norm, 4)
+
+ppms.sat$bimod <-rep(comp.bimod, 4)
+ppms.sat.norm$bimod <- rep(comp.bimod.norm, 4)
 ppms.step$bimod <- rep(comp.bimod, 4)
+
 ellips$bimod <- rep(comp.bimod, 4)
+ellips.norm$bimod <- rep(comp.bimod.norm, 4)
 
 dat.skew <- rbind(ppms.sat, ellips)
+dat.skew.norm <- rbind(ppms.sat.norm, ellips.norm)
+
+dat.skew.all <- rbind(dat.skew, dat.skew.norm)
 
 dir.create("../Graphs")
 #Plots of th relationships
@@ -73,6 +104,16 @@ ggplot(dat.skew) + geom_hex(aes(x = Skewness.env, y = log10(Dist.true.cent))) +
       facet_grid(rows = vars(approach), cols = vars(centr.conf))
 dev.off()
 
+ggplot(dat.skew.norm) + geom_hex(aes(x = Skewness.env, y = log10(Dist.true.cent))) + 
+   scale_fill_continuous(type = "viridis", trans = "log10") +
+   geom_smooth(aes(x = Skewness.env, y = log10(Dist.true.cent)), colour = "red", alpha = 0.5) +
+   labs(fill = expression(paste(log[10], " count")), colour = "", 
+        x = "Multivariate environmental skewness",
+        y = expression(paste(log[10], " Distance to true centroid"))) +
+   facet_grid(rows = vars(approach), cols = vars(centr.conf))
+
+
+
 pdf("../Graphs/Env-skewness-Corr-surf.pdf", width = 9, height = 4)
 ggplot(dat.skew) + geom_hex(aes(x = Skewness.env, y = Corr.surf)) + 
       scale_fill_continuous(type = "viridis", trans = "log10") +
@@ -83,7 +124,13 @@ ggplot(dat.skew) + geom_hex(aes(x = Skewness.env, y = Corr.surf)) +
       facet_grid(rows = vars(approach), cols = vars(centr.conf))
 dev.off()
 
-
+ggplot(dat.skew.all) + geom_hex(aes(x = Skewness.env, y = Corr.surf)) + 
+   scale_fill_continuous(type = "viridis", trans = "log10") +
+   geom_smooth(aes(x = Skewness.env, y = Corr.surf),  colour = "red", alpha = 0.5) +
+   labs(fill = expression(paste(log[10], " count")), colour = "", 
+        x = "Multivariate environmental skewness",
+        y = "Correlation with generating surface") +
+   facet_grid(rows = vars(approach), cols = vars(centr.conf))
 
 #Analysis of the frequency of positive squared terms B'
 
