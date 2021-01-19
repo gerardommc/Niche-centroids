@@ -58,7 +58,7 @@ pres <- lapply(paste0("Simulated-species/Species-presences",
 #Skewness analyses
 registerDoParallel(cores = 4)
 
-s <- seq(1, 10000, by = 10) #Sample of the environment
+s <- seq(1, 10000, by = 4) #Sample of the environment
 
 env.skew <- foreach(i = seq_along(spp.layers), .combine = c) %dopar% {
       df <- as.matrix(spp.layers[[i]])[s, ]
@@ -104,6 +104,7 @@ ggplot(dat.skew) + geom_hex(aes(x = Skewness.env, y = log10(Dist.true.cent))) +
       facet_grid(rows = vars(approach), cols = vars(centr.conf))
 dev.off()
 
+pdf("../Graphs/Env-skewness-Distance-cent-NORM.pdf", width = 9, height = 4)
 ggplot(dat.skew.norm) + geom_hex(aes(x = Skewness.env, y = log10(Dist.true.cent))) + 
    scale_fill_continuous(type = "viridis", trans = "log10") +
    geom_smooth(aes(x = Skewness.env, y = log10(Dist.true.cent)), colour = "red", alpha = 0.5) +
@@ -111,7 +112,7 @@ ggplot(dat.skew.norm) + geom_hex(aes(x = Skewness.env, y = log10(Dist.true.cent)
         x = "Multivariate environmental skewness",
         y = expression(paste(log[10], " Distance to true centroid"))) +
    facet_grid(rows = vars(approach), cols = vars(centr.conf))
-
+dev.off()
 
 
 pdf("../Graphs/Env-skewness-Corr-surf.pdf", width = 9, height = 4)
@@ -124,13 +125,15 @@ ggplot(dat.skew) + geom_hex(aes(x = Skewness.env, y = Corr.surf)) +
       facet_grid(rows = vars(approach), cols = vars(centr.conf))
 dev.off()
 
-ggplot(dat.skew.all) + geom_hex(aes(x = Skewness.env, y = Corr.surf)) + 
+pdf("../Graphs/Env-skewness-Corr-surf-NORM.pdf", width = 9, height = 4)
+ggplot(dat.skew.norm) + geom_hex(aes(x = Skewness.env, y = Corr.surf)) + 
    scale_fill_continuous(type = "viridis", trans = "log10") +
    geom_smooth(aes(x = Skewness.env, y = Corr.surf),  colour = "red", alpha = 0.5) +
    labs(fill = expression(paste(log[10], " count")), colour = "", 
         x = "Multivariate environmental skewness",
         y = "Correlation with generating surface") +
    facet_grid(rows = vars(approach), cols = vars(centr.conf))
+dev.off()
 
 #Analysis of the frequency of positive squared terms B'
 
