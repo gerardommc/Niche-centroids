@@ -13,6 +13,8 @@ spp.1$rad.op <- rad.sp2
 spp.2$rad.op <- rad.sp1
 
 int.spp.dat <- rbind(spp.1, spp.2)
+int.spp.dat$method <- as.factor(int.spp.dat$method)
+int.spp.dat$spp <- as.factor(int.spp.dat$spp)
 levels(int.spp.dat$method) <- c("Ellipses", "Hardcore", "Poisson")
 levels(int.spp.dat$spp) <- c("Species 1", "Species 2")
 
@@ -20,8 +22,7 @@ library(viridis)
 p.corr <- ggplot(int.spp.dat) + geom_tile(aes(x = rad, y = rad.op, fill = corr.surf)) + 
             facet_grid(spp ~ method) + 
             labs(fill = expression(rho), x = "Species 1 radius", y = "Species 2 radius") +
-            scale_fill_gradientn(colours = magma(25)) +
-            theme_dark()
+            scale_fill_gradientn(colours = viridis(25)) 
 
 pdf("../Graphs/Spp-radii-corr.pdf", width = 6, height = 4)
 p.corr
@@ -36,17 +37,15 @@ source("../Random functions/multiplot.R")
 
 p1 <- ggplot(hard) + geom_tile(aes(x = rad, y = rad.op, fill = log10(dist.t.cent))) +
             facet_grid(spp ~ method) +
-      labs(fill = expression(log[10]~ S), x = "", y = "Species 2 radius") + 
-      scale_fill_gradientn(colours = magma(25)) +
-      theme_dark() +
+      labs(fill = expression(log[10]~ dist), x = "", y = "Species 2 radius") + 
+      scale_fill_gradientn(colours = viridis(25)) +
       theme(legend.position = "bottom",
             legend.text = element_text(angle = 45, vjust = 0.5),
             strip.text.y = element_blank())
 p2 <- ggplot(pois) + geom_tile(aes(x = rad, y = rad.op, fill = log10(dist.t.cent))) +
       facet_grid(spp ~ method)+
       labs(fill = "", x = "Species 1 radius", y = "") + 
-      scale_fill_gradientn(colours = magma(25)) +
-      theme_dark() +
+      scale_fill_gradientn(colours = viridis(25)) +
       theme(legend.position = "bottom",
             legend.text = element_text(angle = 45, vjust = 0.5),
             axis.text.y = element_blank(),
@@ -55,8 +54,7 @@ p2 <- ggplot(pois) + geom_tile(aes(x = rad, y = rad.op, fill = log10(dist.t.cent
 p3 <- ggplot(ellip) + geom_tile(aes(x = rad, y = rad.op, fill = log10(dist.t.cent))) +
       facet_grid(spp ~ method) +
       labs(fill = "", x = "    ", y = "") + 
-      scale_fill_gradientn(colours = magma(25)) +
-      theme_dark() +
+      scale_fill_gradientn(colours = viridis(25)) +
       theme(legend.position = "bottom",
             legend.text = element_text(angle = 45, vjust = 0.5),
             axis.text.y = element_blank(),

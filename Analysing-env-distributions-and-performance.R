@@ -133,7 +133,70 @@ ggplot(dat.skew.norm) + geom_hex(aes(x = Skewness.env, y = Corr.surf)) +
         x = "Multivariate environmental skewness",
         y = "Correlation with generating surface") +
    facet_grid(rows = vars(approach), cols = vars(centr.conf))
+dev.off
+
+# Relative performances
+
+dat.skew.ppm <- subset(dat.skew, approach == "PPM-sat")
+dat.skew.ellip <- subset(dat.skew, approach == "Ellipses")
+
+dat.skew.sep <- data.frame(
+   centr.conf = dat.skew.ppm$centr.conf,
+   corr.ppm = dat.skew.ppm$Corr.surf,
+   corr.ell = dat.skew.ellip$Corr.surf,
+   dist.ppm = dat.skew.ppm$Dist.true.cent,
+   dist.ell = dat.skew.ellip$Dist.true.cent
+)
+
+pdf("../Graphs/Dist-vs-corr-surfs.pdf", width = 9, height = 4)
+ggplot(dat.skew) + geom_hex(aes(x = log10(Dist.true.cent), y = Corr.surf)) + 
+   geom_smooth(aes(x = log10(Dist.true.cent), y = Corr.surf), colour = "red", method = "gam", alpha = 0.3) +
+scale_fill_continuous(type = "viridis", trans = "log10") + 
+   facet_grid(rows = vars(approach), cols = vars(centr.conf)) 
 dev.off()
+
+ggplot(dat.skew.sep) + geom_hex(aes(x = corr.ppm, y = corr.ell)) + 
+   facet_grid(cols = vars(centr.conf))
+
+ggplot(dat.skew.sep) + geom_hex(aes(x = log10(dist.ppm), y = log10(dist.ell))) + 
+   facet_grid(cols = vars(centr.conf))
+
+ggplot(dat.skew.sep) + geom_hex(aes(x = log10(dist.ppm), y = corr.ell)) + 
+   facet_grid(cols = vars(centr.conf))
+
+ggplot(dat.skew.sep) + geom_hex(aes(x = corr.ppm, y =log10(dist.ell))) + 
+   facet_grid(cols = vars(centr.conf))
+
+ggplot(dat.skew.sep) + geom_hex(aes(x = log10(dist.ell), y = corr.ell)) + 
+   facet_grid(cols = vars(centr.conf))
+
+library(rgl)
+
+with(dat.skew.sep, plot3d(x = corr.ppm, y = corr.ell, z = log10(dist.ell)))
+
+library(mgcv)
+
+m1 <- gam(log10(dist.ell) ~ s(corr.ppm, corr.ell), data = dat.skew.sep)
+
+new.data <-  expand.grid(corr.ppm = with(dat.skew.sep, seq(min(corr.ppm), max(corr.ppm), len = 25)),
+                         corr.ell = with(dat.skew.sep, seq(min(corr.ell), max(corr.ell), len = 25)))
+new.data$preds <- predict.gam(m1, newdata = new.data)
+
+z <- matrix(new.data$preds, 25, 25)
+x <- with(dat.skew.sep, seq(min(corr.ppm), max(corr.ppm), len = 25))
+y <- with(dat.skew.sep, seq(min(corr.ell), max(corr.ell), len = 25))
+
+cols <- viridis::viridis(4)
+
+persp3d(x, y, z, col = "lightblue",
+        xlab = "", ylab = "", zlab = "", r = 0.1, cex.axis = 2,
+        shininess = 50, lwd = 1, lit = F, meshColor = "black")
+persp3d(x, y, z, front = "lines", 
+        back = "lines",  col = "black", 
+        lwd = 0.75,lit = F, add = T, smooth = T)
+with(dat.skew.sep, rgl.points(x = corr.ppm, y =corr.ell , z = log10(dist.ell), add = T, alpha = 0.5,
+                               col = rep(cols, each = 2500)))
+rgl.postscript("../Graphs/Corr-both-vs-distance.pdf", "pdf", )
 
 #Analysis of the frequency of positive squared terms B'
 
