@@ -2,6 +2,8 @@
 library(spatstat)
 library(raster)
 
+source("Real-spp/Spatstat-formatting-functions.R")
+
 clim <- stack(paste0("Real-spp/Climate/bio", 1:19, ".tif"))
 clim <- projectRaster(clim, crs = CRS("+init=epsg:4269"))
 
@@ -87,7 +89,38 @@ Q <- list(
 
 ####Exploratory analysis
 
-##Analyses of dependence on bioclimatic variables
+##Responses to bioclimatic variables
+
+for(j in 1:2){
+   Z.pca <- pca.im.list[[j]]
+   
+   cuts <- seq(0, 1, by = 0.1)
+   
+   quants <- lapply(Z.pca, function(x){quantile(x, probs = cuts, labels = 1:(length(cuts)-1))})
+   
+   pca.cut <- foreach(k = seq_along(Z.pca)) %do% {
+      cut(Z.pca[[k]], breaks = quants[[k]], labels = 1:(length(cuts)-1))
+   }
+   
+   V <- lapply(pca.cut, function(x)tess(image = x))
+   
+   counts <- foreach(k = seq_along(V)) %do% {
+      quadratcount(Q[[j]]$data, tess = V[[k]])
+   }
+   
+   pdf(paste0("Real-spp/",c("Cal-cal-PCA.pdf", "Cal-mel-PCA.pdf")[j]), width = 15, height = 5)
+   par(mfrow = c(1,3))
+   for(i in 1:3){
+      plot(counts[[i]], main = paste(c("Callipepla californica",
+                                       "Calamospiza melanocorys")[j], names(clim.pca.r)[i], sep = ", "))
+      plot(V[[i]], main = "")
+      points(spp.ppp[[j]], pch = "+", col = "green", cex = 2)
+      plot(rhohat(Q[[j]]$data, Z.pca[[i]]) , main = "")
+   }
+   dev.off()
+}
+
+##Responses to bioclimatic variables
 
 for(j in 1:2){
    Z.bio <- bio.im.list[[j]]
@@ -125,6 +158,8 @@ dev.off()
 png("Real-spp/Pairs-Cal-mel.png", width = 2000, height = 2000)
 pairs(clim.spp[[2]])
 dev.off()
+
+###Model formulas from compatibe and suitable variables
 
 cal.cal.formulas <- c("~ bio1 + bio8 + bio19 + I(bio1^2) + I(bio8^2) + I(bio19^2)",
                       "~ bio1 + bio8 + bio12 + I(bio1^2) + I(bio8^2) + I(bio12^2)",
@@ -176,8 +211,8 @@ png("Real-spp/Diag-cal-mel.png", width = 1000, height = 1000)
 diagnose.ppm(cal.mel.best)
 dev.off()
 
-cal.cal.pred <- predict(cal.cal.best, type = "intensity", dimyx = c(116, 168))
-cal.mel.pred <- predict(cal.mel.best, type = "intensity", dimyx = c(178, 194))
+cal.cal.pred <- predict(cal.cal.best, type = "intensity", dimyx = c(168, 116))
+cal.mel.pred <- predict(cal.mel.best, type = "intensity", dimyx = c(194, 178))
 
 cal.cal.pred.r <- raster(cal.cal.pred)
 cal.mel.pred.r <- raster(cal.mel.pred)
@@ -186,16 +221,143 @@ dir.create("Real-spp/Predictions")
 writeRaster(cal.cal.pred.r, "Real-spp/Predictions/Callipepla-californica-PPM-NAD83", "GTiff")
 writeRaster(cal.mel.pred.r, "Real-spp/Predictions/Calamospiza-melanocorys-PPM-NAD83", "GTiff")
 
+dir.create("Real-spp/Models")
+saveRDS(cal.cal.best, "Real-spp/Models/Cal-cal-PPM.rds")
+saveRDS(cal.mel.best, "Real-spp/Models/Cal-mel-PPM.rds")
+
 ########################
 ####Fitting ellipses####
 ########################
+library(ntbox)
 
+spp.vars <- list(c(8, 11, 12), c(5, 7, 16))
 
+ellips <- foreach(i = seq_along(spp)) %do% {
+   data <- data.frame(extract(clim.spp[[i]], spp[[i]]))[, spp.vars[[i]]]
+   data <- na.omit(data)
+   names(data) <- paste0("bio", spp.vars[[i]])
+   cent <- cov_center(data, vars = paste0("bio", spp.vars[[i]]), level = 0.99)
+   dist <- mahalanobis(clim.spp.points[[i]][, names(data)], center = cent$centroid, cov = cent$covariance)
+   dist.r <- rasterFromXYZ(data.frame(clim.spp.points[[i]][, c("x", "y")], dist))
+   suit <- exp(-0.5 * dist.r)
+   return(list(cen.cov = cent, 
+               Suitability = suit,
+               Distance = dist.r))
+}
+
+names(ellips) <- c("Cal.cal", "Cal.mel")
+
+saveRDS(ellips[[1]], "Real-spp/Models/Cal-cal-Ellips.rds")
+saveRDS(ellips[[2]], "Real-spp/Models/Cal-mel-Ellips.rds")
 
 ###########################
 ####Comparing centroids####
 ###########################
-s.mod <- step(mod)
-coef <- coefficients(mod)
-rast <- raster(predict(mod, type = "trend", ngrid = c(209, 259)))
 
+spp.test <- lapply(list.files("Real-spp/Presence/", "test", full.names = T),   
+                   function(x){
+                   require(rgdal)
+                   x1 <- read.csv(x)
+                   x1.1 <- x1
+                   coordinates(x1) <- c("Longitud", "Latitud")
+                   proj4string(x1) <- CRS("+init=epsg:4326")
+                   x2 <- spTransform(x1, CRS = CRS("+init=epsg:4269"))
+                   x1.1$x <- data.frame(coordinates(x2))[, 1]
+                   x1.1$y <- data.frame(coordinates(x2))[, 2]
+                   return(x1.1)}
+)
+
+ppm.preds <- list(cal.cal.pred.r, cal.mel.pred.r)
+for(i in 1:2){
+   spp.test[[i]]$DNC <- extract(ellips[[i]]$Suitability, spp.test[[i]][, c("x", "y")])
+   spp.test[[i]]$PPM <- extract(ppm.preds[[i]], spp.test[[i]][, c("x", "y")])
+}
+
+
+#Correlation between surfaces and abundance
+cor.test(spp.test[[1]]$Abundance, spp.test[[1]]$PPM, type = "spearman")
+cor.test(spp.test[[2]]$Abundance, spp.test[[2]]$PPM, type = "spearman")
+
+cor.test(spp.test[[1]]$Abundance, spp.test[[1]]$DNC, type = "spearman")
+cor.test(spp.test[[2]]$Abundance, spp.test[[2]]$DNC, type = "spearman")
+
+# Correlation between predicitons
+cal.cal.pred.stack <- stack(cal.cal.pred.r, ellips$Cal.cal$Suitability)
+names(cal.cal.pred.stack) <- c("PPM", "MVE")
+
+cal.mel.pred.stack <- stack(cal.mel.pred.r, ellips$Cal.mel$Suitability)
+names(cal.mel.pred.stack) <- c("PPM", "MVE")
+
+pdf("Real-spp/Correlation-pred-surfaces.pdf", width = 6, height = 6)
+pairs(cal.cal.pred.stack, main = "Callipepla californica")
+pairs(cal.mel.pred.stack, main = "Calamospiza melanocorys")
+dev.off()
+
+##Distance between centroids
+#PPM centroids
+
+cal.cal.coef <- coefficients(cal.cal.best)
+cal.mel.coef <- coefficients(cal.mel.best)
+
+cal.cal.ppm.c <- c()
+cal.mel.ppm.c <- c()
+
+for(i in 1:3){
+   cal.cal.ppm.c[i] <- -(cal.cal.coef[i+1])/(2*cal.cal.coef[i + 4])
+   cal.mel.ppm.c[i] <- -(cal.mel.coef[i+1])/(2*cal.mel.coef[i + 4])
+}
+
+#Distances between centroids
+cal.cal.mah <- mahalanobis(cal.cal.ppm.c, 
+                           center = ellips$Cal.cal$cen.cov$centroid,
+                           cov = ellips$Cal.cal$cen.cov$covariance)
+cal.mel.mah <- mahalanobis(cal.mel.ppm.c, 
+                           center = ellips$Cal.mel$cen.cov$centroid,
+                           cov = ellips$Cal.mel$cen.cov$covariance)
+
+#
+pdf("Real-spp/Cal-cal-Results.pdf", width = 12, height = 7)
+par(mfrow = c(1, 2))
+plot(cal.cal.pred.r, main = "PPM")
+plot(spp.buffers[[1]], add = T)
+points(spp[[1]]$Longitud, spp[[1]]$Latitud,
+       pch = 3, 
+       col = "grey30", cex = 0.75)
+plot(ellips[[1]]$Suitability, main = "MVE")
+plot(spp.buffers[[1]], add = T)
+points(spp.test[[1]]$x, spp.test[[1]]$y,
+       cex = log10(spp.test[[1]]$Abundance)/2, pch = 20, 
+       col = "grey30")
+legend("topright", 
+       legend = paste0(round(c(max(spp.test[[1]]$Abundance), 
+                         (max(spp.test[[1]]$Abundance)-min(spp.test[[1]]$Abundance))/2, 
+                         min(spp.test[[1]]$Abundance)), 1)),
+       pch = 20, col = "grey30",
+       bty = "n", 
+       pt.cex = c(log10(max(spp.test[[1]]$Abundance))/2,
+                  log10((max(spp.test[[1]]$Abundance)-min(spp.test[[1]]$Abundance))/2)/2, 
+                  log10(min(spp.test[[1]]$Abundance))/2+0.1))
+dev.off()
+
+pdf("Real-spp/Cal-mel-Results.pdf", width = 12, height = 7)
+par(mfrow = c(1, 2))
+plot(cal.mel.pred.r, main = "PPM")
+plot(spp.buffers[[2]], add = T)
+points(spp[[2]]$Longitud, spp[[2]]$Latitud,
+       pch = 3, 
+       col = "grey30", cex = 0.75)
+plot(ellips[[2]]$Suitability, main = "MVE")
+plot(spp.buffers[[2]], add = T)
+points(spp.test[[2]]$x, spp.test[[2]]$y,
+       cex = log10(spp.test[[2]]$Abundance)/2, pch = 20, 
+       col = "grey30")
+legend("topright", 
+       legend = paste0(round(c(max(spp.test[[2]]$Abundance), 
+                               (max(spp.test[[2]]$Abundance)-min(spp.test[[2]]$Abundance))/2, 
+                               min(spp.test[[2]]$Abundance)), 1)),
+       pch = 20, col = "grey30",
+       bty = "n", 
+       pt.cex = c(log10(max(spp.test[[2]]$Abundance))/2,
+                  log10((max(spp.test[[2]]$Abundance)-min(spp.test[[2]]$Abundance))/2)/2, 
+                  log10(min(spp.test[[2]]$Abundance))/2+0.1))
+dev.off()
